@@ -293,6 +293,7 @@ class KeywordProcessor(object):
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)
+                data = {k: data[k] for k in sorted(data, key=lambda k: len(k), reverse=True)}
 
                 return data
         except FileNotFoundError:
@@ -333,13 +334,15 @@ class KeywordProcessor(object):
 
         """
         if not os.path.isfile(keyword_file):
+            print(keyword_file)
             raise IOError("Invalid file path {}".format(keyword_file))
-        elif keyword_file.lower().endswith('json'):
+        if keyword_file.lower().endswith('json'):
             dictionary=KeywordProcessor.load_json_as_dict(keyword_file)
             cleaned_dictionary={key: value for key, value in dictionary.items() 
                                 if value is not None and not isinstance(value, list)}
             for key,value in cleaned_dictionary.items():
                 self.add_keyword(key,value)
+            return cleaned_dictionary
 
         else:    
             with io.open(keyword_file, encoding=encoding) as f:
