@@ -88,7 +88,6 @@ class MemoryWordReplacer:
         try:
             org_text_list=org_text.replace('\n',' ').split(' ')
             transliterated_text_list=transliterated_text.replace('\n',' ').split(' ')
-            pattern=r'^[\s,.!?-]+|[\s,.!?-]+$'
             # Generate mappings
             word_mapping={
                 self.remove_punctuations_and_symbols.sub('',key):self.remove_punctuations_and_symbols.sub('',value) 
@@ -106,9 +105,11 @@ class MemoryWordReplacer:
             
 
             # Process non-romanized words
-            non_romanized_words = self.extract_script_words(org_text)
+            # print(self.nos_and_punctuation_pattern.sub(" ",org_text))
+            non_romanized_words = self.extract_script_words(self.nos_and_punctuation_pattern.sub(" ",org_text))
             dictionary_lookup = {word: self.dictionary[word] for word in non_romanized_words if word in self.dictionary}
             for word, replacement in dictionary_lookup.items():
+                print(f'{word}:{replacement}')
                 transliterated_text = transliterated_text.replace(f' {word} ', f' {replacement} ')
 
                 return transliterated_text
@@ -181,7 +182,7 @@ class MemoryWordReplacer:
         ]
 
         # Missing words extraction and handling
-        missing_words = [self.extract_script_words(sent) for sent in fixed_batch]
+        missing_words = [self.extract_script_words(self.nos_and_punctuation_pattern.sub(" ",sent)) for sent in fixed_batch]
         if missing_words:
             all_missing_words = set(sum(missing_words, []))
             for word in all_missing_words:
@@ -199,10 +200,7 @@ class MemoryWordReplacer:
 if __name__=='__main__':
 
     a=MemoryWordReplacer('dictionaries/Final_Dict/tam_Taml_final.json','tam_Taml')
-    text=[''' விமானத்தை விட அதிக நேரம் எடுக்கும் என்றாலும், டிக்கெட் மிகவும் மலிவானது மற்றும் பயண நாளில் வாங்கப்படலாம். முனிச்சிலிருந்து ரோம் செல்லும் ஒரு வழி ரயில் டிக்கெட் சுமார் $35 (32 யூரோக்கள்) செலவாகும், மேலும் பாதை மற்றும் நிறுத்தங்களின் எண்ணிக்கையைப் பொறுத்து 9-12 மணிநேரங்களுக்கு இடையில் எடுக்கும்.
-
-3. கார் மூலம்-முனிச்சிலிருந்து ரோம் வரை காரில் பயணம் செய்வதும் 1966ஒரு விருப்பமாகும். வரையறுக்கப்பட்ட நிறுத்தங்களுடன், முனிச்சிலிருந்து ரோம் வரை வாகனம் ஓட்ட சுமார் 10 மணி நேரம் ஆகும், ஆனால் ஒரு காரை வைத்திருப்பது நீங்கள் பார்க்க விரும்பும் எந்த நகரங்களிலும் அல்லது தளங்களிலும் நிறுத்த நெகிழ்வுத்தன்மையை அனுமதிக்கும். 
-
-உங்கள் குறிப்பிட்ட தேவைகளைப் பொறுத்து, இந்த மூன்று விருப்பங்களும் முனிச்சிலிருந்து ரோம் வரை பயணிக்க சாத்தியமான வழிகளாக இருக்கலாம்.''','இந்த மூன்று விருப்பங்களும் 55முனி:ச்சிலிருந்து ரோம் வரை பயணிக்க சாத்தியமான வழிகளாக இருக்கலாம்.']
+    text=['இந்த மூன்று விருப்பங்களும் முனி 55முனி:ச்சிலிருந்து ரோம் வரை பயணிக்க சாத்தியமான வழிகளாக இருக்கலாம்.']
+    print(a.extract_script_words(text[0]))
     new_text=a.replace_batches(text)
     print(new_text)
