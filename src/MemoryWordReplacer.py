@@ -88,7 +88,6 @@ class MemoryWordReplacer:
         try:
             org_text_list=org_text.replace('\n',' ').split(' ')
             transliterated_text_list=transliterated_text.replace('\n',' ').split(' ')
-            print(len(org_text_list),len(transliterated_text_list))
             pattern=r'^[\s,.!?-]+|[\s,.!?-]+$'
             # Generate mappings
             word_mapping={
@@ -116,8 +115,8 @@ class MemoryWordReplacer:
             
         except Exception as e:
             print(f"Error occurred in fixing_mixed_words: {e}")
-            print(mixed_words)
-            print(word_mapping)
+            # print(mixed_words)
+            # print(word_mapping)
             return transliterated_text
 
 
@@ -192,7 +191,6 @@ class MemoryWordReplacer:
         missing_words_new = [self.extract_script_words(sent) or [''] for sent in fixed_batch]
 
         if len(batch) != len(fixed_batch):
-            print(f'{len(batch), len(fixed_batch)}')
             fixed_batch = self.replace_batches(batch, use_placeholder=False)
 
         return fixed_batch, missing_words_new
@@ -201,20 +199,10 @@ class MemoryWordReplacer:
 if __name__=='__main__':
 
     a=MemoryWordReplacer('dictionaries/Final_Dict/tam_Taml_final.json','tam_Taml')
-    text=['''முனிச்சிலிருந்து ரோம் வரை நீங்கள் பயணிக்க பல வழிகள் இங்கேஃ
-
-1. விமானப் பயணம் மூலம் முனிக்கிலிருந்து ரோம் வரை பயணிக்க மிகவும் பொதுவான மற்றும் வேகமான வழியாக இருக்கலாம். நீங்கள் எப்போது பறக்கிறீர்கள், உங்கள் டிக்கெட் வகுப்பு மற்றும் உங்கள் டிக்கெட்டுகளை வாங்கும் தேதிக்கு எவ்வளவு நெருக்கமாக இருக்கிறீர்கள் என்பதைப் பொறுத்து, விலை $100 (91 யூரோக்கள்) க்கும் குறைவாக இருந்து $500 (455 யூரோக்கள்) வரை மாறுபடும். நீங்கள் பணத்தை சேமிப்பதை உறுதிசெய்ய உங்கள் பயணத்தைத் திட்டமிட்டு முன்கூட்டியே டிக்கெட்டுகளை வாங்குவதை உறுதிப்படுத்திக் கொள்ளுங்கள். மேலும், முனிச் ஒரு பெரிய விமான நிலையத்தைக் (ம்யூக்) கொண்டிருந்தாலும், ரோம் இரண்டு பெரிய சர்வதேச விமான நிலையங்களைக் (எஃப்சிஓ மற்றும் சிஐஏ) கொண்டுள்ளது. விமான நிலையம், பாதுகாப்பு கோடுகள் மற்றும் சுங்க வரிகளில் நேரத்தைக் கணக்கிடாமல், முனிச்சிலிருந்து ரோம் வரை பயணிக்க விமானத்தில் சுமார் 90 நிமிடங்கள் ஆகும்.
-
-2. ரயில் மூலம்-ரயில் மூலம் பயணம் செய்வது முனிச்சிலிருந்து !ரோம் செல்வதற்கான மற்றொரு பொதுவான வழியாகும். விமானத்தை விட அதிக நேரம் எடுக்கும் என்றாலும், டிக்கெட் மிகவும் மலிவானது மற்றும் பயண நாளில் வாங்கப்படலாம். முனிச்சிலிருந்து ரோம் செல்லும் ஒரு வழி ரயில் டிக்கெட் சுமார் $35 (32 யூரோக்கள்) செலவாகும், மேலும் பாதை மற்றும் நிறுத்தங்களின் எண்ணிக்கையைப் பொறுத்து 9-12 மணிநேரங்களுக்கு இடையில் எடுக்கும்.
+    text=[''' விமானத்தை விட அதிக நேரம் எடுக்கும் என்றாலும், டிக்கெட் மிகவும் மலிவானது மற்றும் பயண நாளில் வாங்கப்படலாம். முனிச்சிலிருந்து ரோம் செல்லும் ஒரு வழி ரயில் டிக்கெட் சுமார் $35 (32 யூரோக்கள்) செலவாகும், மேலும் பாதை மற்றும் நிறுத்தங்களின் எண்ணிக்கையைப் பொறுத்து 9-12 மணிநேரங்களுக்கு இடையில் எடுக்கும்.
 
 3. கார் மூலம்-முனிச்சிலிருந்து ரோம் வரை காரில் பயணம் செய்வதும் 1966ஒரு விருப்பமாகும். வரையறுக்கப்பட்ட நிறுத்தங்களுடன், முனிச்சிலிருந்து ரோம் வரை வாகனம் ஓட்ட சுமார் 10 மணி நேரம் ஆகும், ஆனால் ஒரு காரை வைத்திருப்பது நீங்கள் பார்க்க விரும்பும் எந்த நகரங்களிலும் அல்லது தளங்களிலும் நிறுத்த நெகிழ்வுத்தன்மையை அனுமதிக்கும். 
 
 உங்கள் குறிப்பிட்ட தேவைகளைப் பொறுத்து, இந்த மூன்று விருப்பங்களும் முனிச்சிலிருந்து ரோம் வரை பயணிக்க சாத்தியமான வழிகளாக இருக்கலாம்.''','இந்த மூன்று விருப்பங்களும் 55முனி:ச்சிலிருந்து ரோம் வரை பயணிக்க சாத்தியமான வழிகளாக இருக்கலாம்.']
     new_text=a.replace_batches(text)
     print(new_text)
-    # df=pd.DataFrame({'text':text})
-    # df=df.replace(dictionary,regex=True)
-    # print(df['text'][0])
-    # print(a.mixed_words('முனிச்சிலிருந்து ரோம் வரை நீங்கள் பயணிக்க பல வழிகள் இkங்கேஃ '))
-    # p=a.mixed_words(''''முனிச்chiiliiருந்thuu roam varai neengkal payanikka pala vazhigal ingkaehuuu\n\n1. விமானப் பயணmuuuu் moolam முனிக்கிலிருந்து roam varai payanikka மிகவும் podhuvaana mattrum vaekamaana vazhiyaaga irukkalaam. neengkal eppoathu பறக்கிறீர்கள், ungkal டிக்கெட் vaguppu mattrum ungkal டிக்கெட்duukazhaை வாங்கும் thaethikku evvalavu nerukkamaaga இருக்கிறீர்கள் என்பதைப் பொறுத்து, விலை $100 (91 யூரோக்கள்) க்கும் kuraivaaga irunthu $500 (455 யூரோக்கள்) varai மாறுபடும். neengkal பணத்தை சேமிப்பதை uruthiseiya ungkal பயணத்தைத் திட்டமிட்டு முன்கூட்டியே டிக்கெட்duukazhaை வாங்குவதை உறுதிப்படுத்திக் kollungal. maelum, முனிச் oru periya விமான நிலையத்தைக் (ம்யூக்) கொண்டிருந்தாலும், roam irandu periya sarvadesa விமான நிலையங்களைக் (எஃப்சிஓ mattrum சிஐஏ) கொண்டுள்ளது. விமான நிலையம், பாதுகாப்பு கோடுகள் mattrum sunga வரிகளில் நேரத்தைக் கணக்கிடாமல், முனிச்chiiliiருந்thuu roam varai payanikka விமானத்தில் sumar 90 nimidangal aagum.\n\n2. rayil மூலம்-ரயில் moolam பயணmuuuu் seivathu முனிச்chiiliiருந்thuu roam selvatharkaana மற்றொரு podhuvaana வழியாகும். விமானத்தை vida adhiga neram edukkum என்றாலும், டிக்கெட் மிகவும் malivaanathuu mattrum பயண நாளில் vaangkappadalaam. முனிச்chiiliiருந்thuu roam செல்லும் oru vazhi rayil டிக்கெட் sumar $35 (32 யூரோக்கள்) selavaagum, maelum paathai mattrum நிறுத்தங்களின் எண்ணிக்கையைப் பொறுத்து 9-12 மணிநேரங்களுக்கு idaiyil edukkum.\n\n3. kaarr மூலம்-முனிச்சிலிருந்து roam varai qaariill பயணmuuuu் செய்வதும் oru விருப்பமாகும். வரையறுக்கப்பட்ட நிறுத்தங்களுடன், முனிச்chiiliiருந்thuu roam varai vaaganam ஓட்ட sumar 10 manii neram aagum, aanaal oru kaarai vaiththiruppathu neengkal paarkka விரும்பும் endha நகரங்களிலும் allathu தளங்களிலும் நிறுத்த negizhvuththanmaiyaii anumathikkum. \n\nungkal kuripitta தேவைகளைப் பொறுத்து, inththa moontru விருப்பங்களும் முனிச்chiiliiருந்thuu roam varai payanikka saathiyamaana வழிகளாக irukkalaam.''')
-    # print(p)
