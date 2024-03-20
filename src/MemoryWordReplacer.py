@@ -109,7 +109,6 @@ class MemoryWordReplacer:
             non_romanized_words = self.extract_script_words(self.nos_and_punctuation_pattern.sub(" ",org_text))
             dictionary_lookup = {word: self.dictionary[word] for word in non_romanized_words if word in self.dictionary}
             for word, replacement in dictionary_lookup.items():
-                print(f'{word}:{replacement}')
                 transliterated_text = transliterated_text.replace(f' {word} ', f' {replacement} ')
 
                 return transliterated_text
@@ -182,9 +181,11 @@ class MemoryWordReplacer:
         ]
 
         # Missing words extraction and handling
-        missing_words = [self.extract_script_words(self.nos_and_punctuation_pattern.sub(" ",sent)) for sent in fixed_batch]
-        if missing_words:
-            all_missing_words = set(sum(missing_words, []))
+        missing_words = [
+            self.extract_script_words(self.nos_and_punctuation_pattern.sub(" ", sent if sent is not None else ""))
+            for sent in fixed_batch
+        ]
+        if all_missing_words := set(sum(missing_words, [])):
             for word in all_missing_words:
                 if word in self.dictionary:
                     fixed_batch = [sent.replace(word, self.dictionary[word]) if sent else sent for sent in fixed_batch]
