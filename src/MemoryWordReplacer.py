@@ -1,0 +1,220 @@
+import re
+import regex
+from flashtext import KeywordProcessor
+from normalizer import normalize
+
+class MemoryWordReplacer:
+    def __init__(self,dictionary_path:str,src_lang:str):
+        self.kw_processor=KeywordProcessor()
+        self.dictionary=self.kw_processor.add_keyword_from_file(dictionary_path)
+        self.english_pattern=re.compile(r'[A-Za-z+]')
+        self.non_romanized_pattern = regex.compile(r'[\p{Z}\p{P}\p{S}\p{N}]+')
+        self.mixed_word_pattern = re.compile(r'[A-Za-z]')
+        self.allowed_mixed_word_pattern = re.compile(r'^[a-zA-Z0-9\s.,\'"!?]+$')
+        self.regex_replacer=re.compile(r'(?<!\w)(' + '|'.join(re.escape(key) for key in self.dictionary.keys()) + r')(?!\w)')
+        self.nos_and_punctuation_pattern=re.compile(r'[\d\.,;:!?\(\)\[\]\{\}\'\"<>@#$%^&*\-_+=/\\|~`]')
+        self.remove_punctuations_and_symbols= re.compile(r'^[\s,.!?-]+|[\s,.!?-]+$')
+        self.src_lang=src_lang
+        self.script_suffix=src_lang.split('_')[-1]
+        self.indic_script_patterns={
+        "Arab": re.compile(r"[\u0600-\u06FF]"),
+        "Beng": re.compile(r"[\u0980-\u09FF]"),
+        "Deva": re.compile(r"[\u0900-\u097F]"),
+        "Guru": re.compile(r"[\u0A00-\u0A7F]"),
+        "Gujr": re.compile(r"[\u0A80-\u0AFF]"),
+        "Orya": re.compile(r"[\u0B00-\u0B7F]"),
+        "Taml": re.compile(r"[\u0B80-\u0BFF]"),
+        "Telu": re.compile(r"[\u0C00-\u0C7F]"),
+        "Knda": re.compile(r"[\u0C80-\u0CFF]"),
+        "Mlym": re.compile(r"[\u0D00-\u0D7F]"),
+    }
+
+    def remove_english_words(self,s):
+        return self.english_pattern.sub('', s)
+        
+    def remove_english_words_and_empty_strings(self,words):
+        pattern = re.compile(r'^[a-zA-Z]+$')
+        filtered_words = [word for word in words if not pattern.match(word) and word.strip()]
+        return filtered_words
+
+    def split_non_romanized_string(self, text):
+            words = [word.strip() for word in self.non_romanized_pattern.split(text) if self.remove_english_words(word)]
+            return words
+            
+    def extract_script_words(self, sentence):
+        """
+        Extract words from a sentence that belong to a Indic script.
+
+        Args:
+            sentence (str): Input sentence to extract words from.
+
+        Returns:
+            list: List of words from the sentence that belong to the specified script.
+        """
+        if self.script_suffix not in self.indic_script_patterns:
+            print (f"Script name '{self.script_suffix}' is not supported.")
+        pattern = self.indic_script_patterns[self.script_suffix]
+        # Split the sentence into words and filter those that contain characters matching the script's pattern
+        if sentence!=None:
+            words = [word for word in sentence.split() if pattern.search(word)]
+            return words
+        else:
+            return [""]
+    
+
+    
+    def mixed_words(self,text):
+        if not isinstance(text, str):
+            raise ValueError("Input must be a string.")
+        return {
+            word for word in  self.extract_script_words(text) 
+            if bool(self.english_pattern.search(word)) 
+        }
+    
+    
+    def fix_mixed_words(self, org_text, transliterated_text):
+        """
+        Fix mixed-script words in transliterated text using original text.
+
+        Args:
+            org_text (str): Original text.
+            transliterated_text (str): Transliterated text with potential mixed-script words.
+
+        Returns:
+            tuple: (fixed_text, missing_words)
+                fixed_text (str): Transliterated text with mixed-script words fixed.
+                missing_words (list): Words from original text not found in dictionary.
+        """
+        try:
+            org_text_list=org_text.replace('\n',' ').split(' ')
+            transliterated_text_list=transliterated_text.replace('\n',' ').split(' ')
+            print(len(org_text_list),len(transliterated_text_list))
+            pattern=r'^[\s,.!?-]+|[\s,.!?-]+$'
+            # Generate mappings
+            word_mapping={
+                self.remove_punctuations_and_symbols.sub('',key):self.remove_punctuations_and_symbols.sub('',value) 
+                for key, value in zip(transliterated_text_list,org_text_list)
+                }
+
+            mixed_words = [
+                self.remove_punctuations_and_symbols.sub('',word) 
+                for word in list(self.mixed_words(transliterated_text))
+                ]
+            
+            if mixed_words:
+                    pattern = re.compile("|".join(map(re.escape, mixed_words)))
+                    transliterated_text = pattern.sub(lambda m: word_mapping[m.group()], transliterated_text)
+            
+
+            # Process non-romanized words
+            non_romanized_words = self.extract_script_words(org_text)
+            dictionary_lookup = {word: self.dictionary[word] for word in non_romanized_words if word in self.dictionary}
+            for word, replacement in dictionary_lookup.items():
+                transliterated_text = transliterated_text.replace(f' {word} ', f' {replacement} ')
+
+                return transliterated_text
+            
+        except Exception as e:
+            print(f"Error occurred in fixing_mixed_words: {e}")
+            print(mixed_words)
+            print(word_mapping)
+            return transliterated_text
+
+
+    def multiple_replace(self, text):
+        """
+        Replace words in the given text using a dictionary and handle language-specific replacements.
+
+        Args:
+            text (str): Input text to perform replacements on.
+
+        Returns:
+            str: Text with words replaced according to the dictionary and language-specific rules.
+
+        """
+        text=f" {normalize(src_lang=self.src_lang,text=text)} "
+            
+        try:
+            text=self.kw_processor.replace_keywords(text)
+            
+        except Exception as e:
+            print(e,'trying regex replacer')
+            text=self.regex_replacer.sub(lambda x: self.dictionary[x.group()], text)
+
+        return text.strip()
+    
+    def replace_numbers_and_punctuation(self,text):        
+        # Replace all occurrences of the pattern with a space
+        return self.nos_and_punctuation_pattern.sub(' ', text).strip().split(' ')
+
+
+    
+    def replace_batches(self, batch, use_placeholder=True):
+        if not self.dictionary:
+            print('Dictionary is None')
+            return batch, [[''] * len(batch)]
+
+        # Compute language-specific operations once
+        
+        # Replacing punctuations
+        if self.script_suffix in ['Orya', 'Deva', 'Beng', 'Gujr', 'Guru']:
+            pattern = re.compile(r'[।|॥]')
+            batch = [pattern.sub('.', text) for text in batch]
+        elif self.script_suffix == 'Arab':
+            batch = [text.replace('۔', '.').replace('؟', '?') for text in batch]
+
+        # Placeholder handling
+        if use_placeholder:
+            placeholder = '[batch]'
+            text = placeholder.join(batch)
+            transliterated_text = self.multiple_replace(text)
+            transliterated_batch = transliterated_text.split(placeholder)
+        else:
+            transliterated_batch = [self.multiple_replace(text) for text in batch]
+
+        if not transliterated_batch:
+            print('Failed on transliteration returning Original text')
+            return batch, [[''] * len(batch)]
+
+        fixed_batch = [
+            self.fix_mixed_words(org_string, transliterated_string)
+            for org_string, transliterated_string in zip(batch, transliterated_batch)
+        ]
+
+        # Missing words extraction and handling
+        missing_words = [self.extract_script_words(sent) for sent in fixed_batch]
+        if missing_words:
+            all_missing_words = set(sum(missing_words, []))
+            for word in all_missing_words:
+                if word in self.dictionary:
+                    fixed_batch = [sent.replace(word, self.dictionary[word]) if sent else sent for sent in fixed_batch]
+
+        missing_words_new = [self.extract_script_words(sent) or [''] for sent in fixed_batch]
+
+        if len(batch) != len(fixed_batch):
+            print(f'{len(batch), len(fixed_batch)}')
+            fixed_batch = self.replace_batches(batch, use_placeholder=False)
+
+        return fixed_batch, missing_words_new
+
+    
+if __name__=='__main__':
+
+    a=MemoryWordReplacer('dictionaries/Final_Dict/tam_Taml_final.json','tam_Taml')
+    text=['''முனிச்சிலிருந்து ரோம் வரை நீங்கள் பயணிக்க பல வழிகள் இங்கேஃ
+
+1. விமானப் பயணம் மூலம் முனிக்கிலிருந்து ரோம் வரை பயணிக்க மிகவும் பொதுவான மற்றும் வேகமான வழியாக இருக்கலாம். நீங்கள் எப்போது பறக்கிறீர்கள், உங்கள் டிக்கெட் வகுப்பு மற்றும் உங்கள் டிக்கெட்டுகளை வாங்கும் தேதிக்கு எவ்வளவு நெருக்கமாக இருக்கிறீர்கள் என்பதைப் பொறுத்து, விலை $100 (91 யூரோக்கள்) க்கும் குறைவாக இருந்து $500 (455 யூரோக்கள்) வரை மாறுபடும். நீங்கள் பணத்தை சேமிப்பதை உறுதிசெய்ய உங்கள் பயணத்தைத் திட்டமிட்டு முன்கூட்டியே டிக்கெட்டுகளை வாங்குவதை உறுதிப்படுத்திக் கொள்ளுங்கள். மேலும், முனிச் ஒரு பெரிய விமான நிலையத்தைக் (ம்யூக்) கொண்டிருந்தாலும், ரோம் இரண்டு பெரிய சர்வதேச விமான நிலையங்களைக் (எஃப்சிஓ மற்றும் சிஐஏ) கொண்டுள்ளது. விமான நிலையம், பாதுகாப்பு கோடுகள் மற்றும் சுங்க வரிகளில் நேரத்தைக் கணக்கிடாமல், முனிச்சிலிருந்து ரோம் வரை பயணிக்க விமானத்தில் சுமார் 90 நிமிடங்கள் ஆகும்.
+
+2. ரயில் மூலம்-ரயில் மூலம் பயணம் செய்வது முனிச்சிலிருந்து !ரோம் செல்வதற்கான மற்றொரு பொதுவான வழியாகும். விமானத்தை விட அதிக நேரம் எடுக்கும் என்றாலும், டிக்கெட் மிகவும் மலிவானது மற்றும் பயண நாளில் வாங்கப்படலாம். முனிச்சிலிருந்து ரோம் செல்லும் ஒரு வழி ரயில் டிக்கெட் சுமார் $35 (32 யூரோக்கள்) செலவாகும், மேலும் பாதை மற்றும் நிறுத்தங்களின் எண்ணிக்கையைப் பொறுத்து 9-12 மணிநேரங்களுக்கு இடையில் எடுக்கும்.
+
+3. கார் மூலம்-முனிச்சிலிருந்து ரோம் வரை காரில் பயணம் செய்வதும் 1966ஒரு விருப்பமாகும். வரையறுக்கப்பட்ட நிறுத்தங்களுடன், முனிச்சிலிருந்து ரோம் வரை வாகனம் ஓட்ட சுமார் 10 மணி நேரம் ஆகும், ஆனால் ஒரு காரை வைத்திருப்பது நீங்கள் பார்க்க விரும்பும் எந்த நகரங்களிலும் அல்லது தளங்களிலும் நிறுத்த நெகிழ்வுத்தன்மையை அனுமதிக்கும். 
+
+உங்கள் குறிப்பிட்ட தேவைகளைப் பொறுத்து, இந்த மூன்று விருப்பங்களும் முனிச்சிலிருந்து ரோம் வரை பயணிக்க சாத்தியமான வழிகளாக இருக்கலாம்.''','இந்த மூன்று விருப்பங்களும் 55முனி:ச்சிலிருந்து ரோம் வரை பயணிக்க சாத்தியமான வழிகளாக இருக்கலாம்.']
+    new_text=a.replace_batches(text)
+    print(new_text)
+    # df=pd.DataFrame({'text':text})
+    # df=df.replace(dictionary,regex=True)
+    # print(df['text'][0])
+    # print(a.mixed_words('முனிச்சிலிருந்து ரோம் வரை நீங்கள் பயணிக்க பல வழிகள் இkங்கேஃ '))
+    # p=a.mixed_words(''''முனிச்chiiliiருந்thuu roam varai neengkal payanikka pala vazhigal ingkaehuuu\n\n1. விமானப் பயணmuuuu் moolam முனிக்கிலிருந்து roam varai payanikka மிகவும் podhuvaana mattrum vaekamaana vazhiyaaga irukkalaam. neengkal eppoathu பறக்கிறீர்கள், ungkal டிக்கெட் vaguppu mattrum ungkal டிக்கெட்duukazhaை வாங்கும் thaethikku evvalavu nerukkamaaga இருக்கிறீர்கள் என்பதைப் பொறுத்து, விலை $100 (91 யூரோக்கள்) க்கும் kuraivaaga irunthu $500 (455 யூரோக்கள்) varai மாறுபடும். neengkal பணத்தை சேமிப்பதை uruthiseiya ungkal பயணத்தைத் திட்டமிட்டு முன்கூட்டியே டிக்கெட்duukazhaை வாங்குவதை உறுதிப்படுத்திக் kollungal. maelum, முனிச் oru periya விமான நிலையத்தைக் (ம்யூக்) கொண்டிருந்தாலும், roam irandu periya sarvadesa விமான நிலையங்களைக் (எஃப்சிஓ mattrum சிஐஏ) கொண்டுள்ளது. விமான நிலையம், பாதுகாப்பு கோடுகள் mattrum sunga வரிகளில் நேரத்தைக் கணக்கிடாமல், முனிச்chiiliiருந்thuu roam varai payanikka விமானத்தில் sumar 90 nimidangal aagum.\n\n2. rayil மூலம்-ரயில் moolam பயணmuuuu் seivathu முனிச்chiiliiருந்thuu roam selvatharkaana மற்றொரு podhuvaana வழியாகும். விமானத்தை vida adhiga neram edukkum என்றாலும், டிக்கெட் மிகவும் malivaanathuu mattrum பயண நாளில் vaangkappadalaam. முனிச்chiiliiருந்thuu roam செல்லும் oru vazhi rayil டிக்கெட் sumar $35 (32 யூரோக்கள்) selavaagum, maelum paathai mattrum நிறுத்தங்களின் எண்ணிக்கையைப் பொறுத்து 9-12 மணிநேரங்களுக்கு idaiyil edukkum.\n\n3. kaarr மூலம்-முனிச்சிலிருந்து roam varai qaariill பயணmuuuu் செய்வதும் oru விருப்பமாகும். வரையறுக்கப்பட்ட நிறுத்தங்களுடன், முனிச்chiiliiருந்thuu roam varai vaaganam ஓட்ட sumar 10 manii neram aagum, aanaal oru kaarai vaiththiruppathu neengkal paarkka விரும்பும் endha நகரங்களிலும் allathu தளங்களிலும் நிறுத்த negizhvuththanmaiyaii anumathikkum. \n\nungkal kuripitta தேவைகளைப் பொறுத்து, inththa moontru விருப்பங்களும் முனிச்chiiliiருந்thuu roam varai payanikka saathiyamaana வழிகளாக irukkalaam.''')
+    # print(p)
