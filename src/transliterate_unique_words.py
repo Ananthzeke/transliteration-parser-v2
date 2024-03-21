@@ -9,16 +9,16 @@ english_pattern=re.compile(r'[A-Za-z]+')
 
 engine =  XlitEngine( beam_width=4, src_script_type = "indic")
 
-def ds_to_json(ds):
+def ds_to_json(ds,column):
     # Convert to Pandas DataFrame
     df = ds.to_pandas()
     
     # Ensure the columns are named correctly
-    if 'native_words' not in df.columns or 'transliterated' not in df.columns:
-        raise ValueError("Expected columns 'native_words' and 'transliterated' not found")
+    if column not in df.columns or 'transliterated' not in df.columns:
+        raise ValueError(f"Expected columns {column} and 'transliterated' not found")
 
     # Convert the DataFrame to a dictionary
-    dictionary = df.set_index('native_words')['transliterated'].to_dict()
+    dictionary = df.set_index(column)['transliterated'].to_dict()
     return dictionary
 
 def remove_english_words(s):
@@ -37,7 +37,7 @@ def transliterate(org_batch,src_lang):
         return {'transliterated':batch}
     return {'transliterated':batch[0]}
 
-def transliterate_using_hugging_face(input_path,src_lang,batch_size,cache_dir):
+def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache_dir):
     
     ds=load_dataset(
         'csv',
@@ -46,11 +46,11 @@ def transliterate_using_hugging_face(input_path,src_lang,batch_size,cache_dir):
     )
 
     #de-dup
-    ds=ds.filter(lambda x: True if x['native_words']!=None   else False )
+    ds=ds.filter(lambda x: True if x[column]!=None   else False )
     ds=ds.map(
-        lambda x: transliterate(x['native_words'],'ta'),
+        lambda x: {transliterate(x[column],src_lang)},
         batched=True,
-        batch_size=batch_size
+        batch_size=batch_size,
     )
     print(ds)
 
@@ -74,6 +74,7 @@ def store_data_as_json(input_data, file_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Transliterate words using Hugging Face and store results in JSON.')
     parser.add_argument('--input_path', type=str, required=True, help='Path to the input CSV file')
+    parser.add_argument('--column_name', type=str, required=True, help='column_name')
     parser.add_argument('--src_lang', type=str, required=True, help='Source language code')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for processing')
     parser.add_argument('--cache_dir', type=str, default='/data/umashankar/.cache', help='Cache directory for Hugging Face datasets')
@@ -84,11 +85,12 @@ if __name__ == '__main__':
     # Use the parsed arguments
     ds = transliterate_using_hugging_face(
         args.input_path,
+        args.column_name,
         args.src_lang,
         args.batch_size,
         args.cache_dir
     )
 
     # Save the dataset to JSON
-    ds_dict = ds_to_json(ds['train'])
+    ds_dict = ds_to_json(ds['train'],args.column_name)
     store_data_as_json(ds_dict, args.output_json_path)
