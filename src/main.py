@@ -3,7 +3,6 @@ import glob
 import argparse
 from MemoryWordReplacer import MemoryWordReplacer
 from datasets import load_dataset,disable_caching,Features,Sequence,Value
-import random
 
 disable_caching()
 
@@ -57,7 +56,7 @@ if __name__ == '__main__':
         file_type,
         data_files=dataset_paths,
         cache_dir=cache_dir,
-    ).select_columns([id_column,translated_text_column]).shuffle(seed=random.randint(0,1000))
+    ).select_columns([id_column,translated_text_column])
 
     ds=ds.filter(lambda x : x[translated_text_column] not in (None,''),num_proc=num_proc)
     if sample_size:
