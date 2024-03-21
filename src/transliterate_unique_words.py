@@ -24,20 +24,26 @@ def ds_to_json(ds,column):
 def remove_english_words(s):
     return english_pattern.sub("", s)
 
-def transliterate(org_batch,src_lang):
-    batch=engine.batch_transliterate_words(
-            org_batch,
-            src_lang=src_lang,
-            tgt_lang='en',
-            topk=1
-        )
-
-    if len(org_batch)!=len(batch[0]):
-        batch=[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]
+def transliterate(org_batch,src_lang,use_sentence_transliterate=False):
+    if use_sentence_transliterate:
+        batch=[ engine._transliterate_sentence(text=word,src_lang=src_lang,tgt_lang='en') 
+        for word in org_batch]
         return {'transliterated':batch}
-    return {'transliterated':batch[0]}
+    
+    else:
+        batch=engine.batch_transliterate_words(
+                org_batch,
+                src_lang=src_lang,
+                tgt_lang='en',
+                topk=1
+            )
 
-def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache_dir):
+        if len(org_batch)!=len(batch[0]):
+            batch=[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]
+            return {'transliterated':batch}
+        return {'transliterated':batch[0]}
+
+def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache_dir,use_sentence_transliterate):
     
     ds=load_dataset(
         'csv',
@@ -48,7 +54,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
     #de-dup
     ds=ds.filter(lambda x: True if x[column]!=None   else False )
     ds=ds.map(
-        lambda x: {transliterate(x[column],src_lang)},
+        lambda x: {transliterate(x[column],src_lang,use_sentence_transliterate)},
         batched=True,
         batch_size=batch_size,
     )
@@ -79,7 +85,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for processing')
     parser.add_argument('--cache_dir', type=str, default='/data/umashankar/.cache', help='Cache directory for Hugging Face datasets')
     parser.add_argument('--output_json_path', type=str, default='output.json', help='Path to store the output JSON file')
-
+    parser.add_argument('--use_sentence_transliterate', action='store_true', help='sentence transliterate preserves structure of the symbols')
     args = parser.parse_args()
 
     # Use the parsed arguments
@@ -88,7 +94,8 @@ if __name__ == '__main__':
         args.column_name,
         args.src_lang,
         args.batch_size,
-        args.cache_dir
+        args.cache_dir,
+        args.use_sentence_transliterate
     )
 
     # Save the dataset to JSON
