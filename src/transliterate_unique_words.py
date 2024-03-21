@@ -54,7 +54,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
     #de-dup
     ds=ds.filter(lambda x: True if x[column]!=None   else False )
     ds=ds.map(
-        lambda x: {transliterate(x[column],src_lang,use_sentence_transliterate)},
+        lambda x: transliterate(x[column],src_lang,use_sentence_transliterate),
         batched=True,
         batch_size=batch_size,
     )
