@@ -73,8 +73,8 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
     )
 
     #de-dup
-    ds=ds.filter(lambda x: True if x[column]!=None   else False )
-    ds=ds['train'].to_pandas().drop_duplicates(column)
+    ds=ds['train'].to_pandas()
+    ds = ds[ds[column].notnull()].drop_duplicates(column)
     ds=Dataset.from_pandas(ds)
     sent_ds=ds.filter(
         lambda x : contains_space_symbol_or_number_in_middle(x[column])
