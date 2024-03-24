@@ -86,8 +86,8 @@ class MemoryWordReplacer:
                 missing_words (list): Words from original text not found in dictionary.
         """
         try:
-            org_text_list=org_text.replace('\n',' ').split(' ')
-            transliterated_text_list=transliterated_text.replace('\n',' ').split(' ')
+            org_text_list=org_text.replace('\n',' ').replace('\t',' ').split(' ')
+            transliterated_text_list=transliterated_text.replace('\n',' ').replace('\t',' ').split(' ')
             # Generate mappings
             word_mapping={
                 self.remove_punctuations_and_symbols.sub('',key):self.remove_punctuations_and_symbols.sub('',value) 
@@ -98,25 +98,19 @@ class MemoryWordReplacer:
                 self.remove_punctuations_and_symbols.sub('',word) 
                 for word in list(self.mixed_words(transliterated_text))
                 ]
-            
             if mixed_words:
-                    pattern = re.compile("|".join(map(re.escape, mixed_words)))
-                    transliterated_text = pattern.sub(lambda m: word_mapping[m.group()], transliterated_text)
-            
+                pattern = re.compile("|".join(map(re.escape, mixed_words)))
+                transliterated_text = pattern.sub(lambda m: word_mapping[m.group()], transliterated_text)            
 
             # Process non-romanized words
-            # print(self.nos_and_punctuation_pattern.sub(" ",org_text))
-            non_romanized_words = self.extract_script_words(self.nos_and_punctuation_pattern.sub(" ",org_text))
+            non_romanized_words = sorted(self.extract_script_words(self.nos_and_punctuation_pattern.sub(" ",org_text)),key=len,reverse=True)
             dictionary_lookup = {word: self.dictionary[word] for word in non_romanized_words if word in self.dictionary}
             for word, replacement in dictionary_lookup.items():
-                transliterated_text = transliterated_text.replace(f' {word} ', f' {replacement} ')
-
-                return transliterated_text
+                transliterated_text = transliterated_text.replace(f'{word}', f'{replacement}')
+            return transliterated_text
             
         except Exception as e:
             print(f"Error occurred in fixing_mixed_words: {e}")
-            # print(mixed_words)
-            # print(word_mapping)
             return transliterated_text
 
 
@@ -200,8 +194,14 @@ class MemoryWordReplacer:
     
 if __name__=='__main__':
 
-    a=MemoryWordReplacer('dictionaries/Final_Dict/tam_Taml_final.json','tam_Taml')
-    text=['இந்த மூன்று விருப்பங்களும் முனி 55முனி:ச்சிலிருந்து ரோம் வரை பயணிக்க சாத்தியமான வழிகளாக இருக்கலாம்.']
-    print(a.extract_script_words(text[0]))
-    new_text=a.replace_batches(text)
-    print(new_text)
+    a=MemoryWordReplacer('dictionaries/Final_Dict/hin_Deva_final.json','hin_Deva')
+    # text=['இந்த மூன்று விருப்பங்களும் முனி 55முனி:ச்சிலிருந்து ரோம் வரை பயணிக்க சாத்தியமான வழிகளாக இருக்கலாம் emh4yuuவை.']
+#     text=['''".
+# 3.	1972ஆம் .
+# 4.	1707இல் .
+# 5.	1700களில்
+# "''']
+    text=['''स्पेसमैन''']
+    print(a.replace_batches(text))
+    # new_text=a.replace_batches(text)
+    # print(new_text)
