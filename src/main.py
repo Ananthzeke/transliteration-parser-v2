@@ -26,6 +26,7 @@ if __name__ == '__main__':
     parser.add_argument('--cache_dir', type=str, default=None,required=True, help='Cache directory for storing temporary files.')
     parser.add_argument('--id_column', type=str, default='doc_id', help='Column to be processed.')
     parser.add_argument('--text_column', type=str, default='translated', help='Column to be processed.')
+    parser.add_argument('--other_columns', nargs='*', default=[], help='Columns to be intact with processed columns.')
     parser.add_argument('--file_type', type=str, required=True,choices=['csv','parquet','arrow'])
     parser.add_argument('--dataset_path', type=str, required=True, help='Glob path for dataset files.')
     parser.add_argument('--missing_log_path', type=str, required=True, help='Name for missing words text file')
@@ -41,7 +42,8 @@ if __name__ == '__main__':
     cache_dir=args.cache_dir
     src_lang=args.src_lang
     id_column=args.id_column
-    translated_text_column=args.text_column
+    text_column=args.text_column
+    columns=args.other_columns
     file_type=args.file_type
     dataset_paths=glob.glob(args.dataset_path)
     sample_size=args.sample_size
@@ -52,13 +54,15 @@ if __name__ == '__main__':
 
     create_dir_if_not_exists(missing_words_log_path)
 
+    columns.extend([id_column,text_column])
     ds=load_dataset(
         file_type,
         data_files=dataset_paths,
         cache_dir=cache_dir,
-    ).select_columns([id_column,translated_text_column])
+    ).select_columns(columns)
+    print(ds)
 
-    ds=ds.filter(lambda x : x[translated_text_column] not in (None,''),num_proc=num_proc)
+    ds=ds.filter(lambda x : x[text_column] not in (None,''),num_proc=num_proc)
     if sample_size:
         ds = ds['train'].select(range(sample_size))
     else:
@@ -69,12 +73,13 @@ if __name__ == '__main__':
     out_columns=['transliterated','missing_words']
     out_features=Features({
         id_column:Value("string"),
-        translated_text_column:Value("string"),
+        'translated':Value("string"),
+        text_column:Value("string"),
         out_columns[0]: Value("string"),
         out_columns[1]: Sequence(Value("string"))
         })
     ds=ds.map(
-        lambda z:dict(zip(out_columns,mem_replacer.replace_batches(z[translated_text_column]))),
+        lambda z:dict(zip(out_columns,mem_replacer.replace_batches(z[text_column]))),
         batched=True,
         batch_size=batch_size,
         num_proc=num_proc,
@@ -83,7 +88,6 @@ if __name__ == '__main__':
     df=ds.to_pandas()['missing_words'].explode().drop_duplicates()
     df.to_csv(f'{missing_words_log_path}/{src_lang}.csv',index=False)
 
-    ds.to_csv('sample.csv')
     if ds.num_rows//2>num_proc and num_proc>=40:
         ds.save_to_disk(output_path,num_proc=40)
     else:
