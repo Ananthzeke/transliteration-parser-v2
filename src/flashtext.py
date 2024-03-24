@@ -293,7 +293,7 @@ class KeywordProcessor(object):
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)
-                data = {k.strip(): data[k].strip() for k in sorted(data, key=lambda k: len(k), reverse=True) if ' ' not in k}
+                data = {k.strip(): data[k].strip() for k in sorted(data, key=lambda k: len(k), reverse=True) if ' ' not in k.strip()}
 
                 return data
         except FileNotFoundError:
