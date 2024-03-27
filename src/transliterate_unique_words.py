@@ -98,7 +98,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
             lambda x: transliterate(x[column],src_lang,False),
             batched=True,
             batch_size=batch_size,
-            desc=f'batch transliteration ({round(ds.num_rows/10e3,3)}k words)'
+            desc=f'batch transliteration ({round(ds.num_rows/1e3,3)}k words)'
     
         )
     if sent_ds.num_rows:
@@ -106,7 +106,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
             lambda x: transliterate(x[column],src_lang,True),
             batched=True,
             batch_size=batch_size,
-            desc=f'sentence transliteration ({round(sent_ds.num_rows/10e3,3)}k words)'
+            desc=f'sentence transliteration ({round(sent_ds.num_rows/1e3,3)}k words)'
         )
     ds=concatenate_datasets([ds,sent_ds])
     print(f'\nTotal words transliterated {ds.num_rows}')
