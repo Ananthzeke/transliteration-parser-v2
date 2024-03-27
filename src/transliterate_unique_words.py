@@ -15,7 +15,7 @@ def contains_space_symbol_or_number_in_middle(word):
     return bool(punct_no_pattern_in_mid.search(word))
 
 def remove_punctuation_and_numbers(batch_words):
-    batch_words=[w for word in batch_words for w in punct_no_pattern.sub(' ',word).strip().split(' ') if w!=' ']
+    batch_words=[w for word in batch_words for w in punct_no_pattern.sub(' ',word).strip().split(' ') if w not in [' ','']]
     return batch_words
 
 
@@ -61,7 +61,10 @@ def transliterate(org_batch,src_lang,use_sentence_transliterate=False):
                 topk=1
             )
         if len(org_batch)!=len(batch[0]):
-            batch=[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]
+            try:
+                batch=[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]
+            except Exception as e: 
+                print(f'failed on example {org_batch}')
             return {'transliterated':batch}
         return {'transliterated':batch[0]}
 
