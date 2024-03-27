@@ -6,16 +6,17 @@ import argparse
 from datasets import load_dataset,Dataset,concatenate_datasets
 from ai4bharat.transliteration import XlitEngine
 from normalizer import mapping_dict
-# from data_prepartion.prefix_heirarchy import ds_to_json
+
 english_pattern=re.compile(r'[A-Za-z]+')
-punct_no_pattern = re.compile(r'[0-9!"#$%&\'()*+,-./:;<=>?@\[\\\]^_`{|}~]')
+punct_no_pattern = re.compile(r'[0-9!"#$%&\'()*+,-./:;<=>?@\[\\\]^_`{|}~\n\t]')
 punct_no_pattern_in_mid = re.compile(r'\w[ !-\/:-@\[-`{-~\d]\w')
 
 def contains_space_symbol_or_number_in_middle(word):
     return bool(punct_no_pattern_in_mid.search(word))
 
-def remove_punctuation_and_numbers(word):
-    return punct_no_pattern.sub('',word)
+def remove_punctuation_and_numbers(batch_words):
+    batch_words=[w for word in batch_words for w in punct_no_pattern.sub(' ',word).strip().split(' ') if w!=' ']
+    return batch_words
 
 
 def contains_punctuation(word):
@@ -74,7 +75,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
 
     #de-dup
     ds=ds['train'].to_pandas()
-    ds = ds[ds[column].notnull()].drop_duplicates(column)
+    ds = ds[ds[column].notnull()].drop_duplicates(column).reset_index()
     ds=Dataset.from_pandas(ds)
     sent_ds=ds.filter(
         lambda x : contains_space_symbol_or_number_in_middle(x[column])
@@ -83,22 +84,21 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
          )
     sent_ds=sent_ds.to_pandas().drop_duplicates(column)
     sent_ds=Dataset.from_pandas(sent_ds)
-    print(f'words {sent_ds.num_rows} for sentence transliteration')
     ds=ds.filter(
         lambda x : not contains_space_symbol_or_number_in_middle(x[column]) 
         and not contains_english_words(x[column]) ,num_proc=num_proc
         )
     
-    ds=ds.map(lambda x : {column:remove_punctuation_and_numbers(x[column])},num_proc=num_proc)
+    ds=ds.map(lambda batch : {column:remove_punctuation_and_numbers(batch[column])},remove_columns=ds.column_names,batched=True)
     ds=ds.to_pandas().drop_duplicates(column)
     ds=Dataset.from_pandas(ds)
-    print(f'{ds.num_rows} words for batch transliteration')
 
     if ds.num_rows:
         ds=ds.map(
             lambda x: transliterate(x[column],src_lang,False),
             batched=True,
             batch_size=batch_size,
+            desc=f'batch transliteration ({round(ds.num_rows/10e3,3)}k words)'
     
         )
     if sent_ds.num_rows:
@@ -106,9 +106,10 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
             lambda x: transliterate(x[column],src_lang,True),
             batched=True,
             batch_size=batch_size,
+            desc=f'sentence transliteration ({round(sent_ds.num_rows/10e3,3)}k words)'
         )
     ds=concatenate_datasets([ds,sent_ds])
-    print(ds)
+    print(f'\nTotal words transliterated {ds.num_rows}')
 
     return ds
 
