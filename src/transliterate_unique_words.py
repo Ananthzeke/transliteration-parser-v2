@@ -7,8 +7,21 @@ from datasets import load_dataset,Dataset,concatenate_datasets
 from ai4bharat.transliteration import XlitEngine
 from normalizer import mapping_dict
 
+indic_script_patterns={
+        "Arab": re.compile(r"[\u0600-\u06FF]"),
+        "Beng": re.compile(r"[\u0980-\u09FF]"),
+        "Deva": re.compile(r"[\u0900-\u097F]"),
+        "Guru": re.compile(r"[\u0A00-\u0A7F]"),
+        "Gujr": re.compile(r"[\u0A80-\u0AFF]"),
+        "Orya": re.compile(r"[\u0B00-\u0B7F]"),
+        "Taml": re.compile(r"[\u0B80-\u0BFF]"),
+        "Telu": re.compile(r"[\u0C00-\u0C7F]"),
+        "Knda": re.compile(r"[\u0C80-\u0CFF]"),
+        "Mlym": re.compile(r"[\u0D00-\u0D7F]"),
+    }
+
 english_pattern=re.compile(r'[A-Za-z]+')
-punct_no_pattern = re.compile(r'[0-9!"#$%&\'()*+,-./:;<=>?@\[\\\]^_`{|}~\n\t]')
+punct_no_pattern = re.compile(r'[0-9!"#$%&\'()*+,-./:;<=>?@\[\\\]^_`{|}~\n\t।|॥۔؟]')
 punct_no_pattern_in_mid = re.compile(r'\w[ !-\/:-@\[-`{-~\d]\w')
 
 def contains_space_symbol_or_number_in_middle(word):
@@ -44,8 +57,8 @@ def ds_to_json(ds,column):
 def transliterate(org_batch,src_lang,use_sentence_transliterate=False):
     if use_sentence_transliterate:
         batch='[batch]'.join(org_batch)
-        # batch=[ engine._transliterate_sentence(text=word,src_lang=src_lang,tgt_lang='en') 
-        # for word in org_batch]
+        batch=[ engine._transliterate_sentence(text=word,src_lang=src_lang,tgt_lang='en') 
+        for word in org_batch]
         try:
             batch=engine._transliterate_sentence(text=batch,src_lang=src_lang,tgt_lang='en').split('[batch]')
         except Exception as e:
@@ -59,8 +72,11 @@ def transliterate(org_batch,src_lang,use_sentence_transliterate=False):
                 src_lang=src_lang,
                 tgt_lang='en',
                 topk=1
-            )
+           )
         if len(org_batch)!=len(batch[0]):
+            print(f'pre process {(org_batch)}')
+            print(f'post process {(batch[0])}')
+
             try:
                 batch=[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]
             except Exception as e: 
@@ -93,12 +109,13 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
         )
     
     ds=ds.map(lambda batch : {column:remove_punctuation_and_numbers(batch[column])},remove_columns=ds.column_names,batched=True)
+    ds=ds.filter(lambda x : indic_script_patterns[src_lang.split('_')[-1]].search(x[column]),num_proc=num_proc)
     ds=ds.to_pandas().drop_duplicates(column)
     ds=Dataset.from_pandas(ds)
 
     if ds.num_rows:
         ds=ds.map(
-            lambda x: transliterate(x[column],src_lang,False),
+            lambda x: transliterate(x[column],mapping_dict[src_lang],False),
             batched=True,
             batch_size=batch_size,
             desc=f'batch transliteration ({round(ds.num_rows/1e3,3)}k words)'
@@ -106,7 +123,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
         )
     if sent_ds.num_rows:
         sent_ds=sent_ds.map(
-            lambda x: transliterate(x[column],src_lang,True),
+            lambda x: transliterate(x[column],mapping_dict[src_lang],True),
             batched=True,
             batch_size=batch_size,
             desc=f'sentence transliteration ({round(sent_ds.num_rows/1e3,3)}k words)'
@@ -148,7 +165,7 @@ if __name__ == '__main__':
     ds = transliterate_using_hugging_face(
         args.input_path,
         args.column_name,
-        mapping_dict[args.src_lang],
+        args.src_lang,
         args.batch_size,
         args.cache_dir,
         args.num_proc
