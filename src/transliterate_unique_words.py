@@ -1,24 +1,10 @@
 import os,re
-import os
 import json
-import glob
 import argparse
 from datasets import load_dataset,Dataset,concatenate_datasets
 from ai4bharat.transliteration import XlitEngine
-from normalizer import mapping_dict
+from normalizer import mapping_dict,indic_script_patterns
 
-indic_script_patterns={
-        "Arab": re.compile(r"[\u0600-\u06FF]"),
-        "Beng": re.compile(r"[\u0980-\u09FF]"),
-        "Deva": re.compile(r"[\u0900-\u097F]"),
-        "Guru": re.compile(r"[\u0A00-\u0A7F]"),
-        "Gujr": re.compile(r"[\u0A80-\u0AFF]"),
-        "Orya": re.compile(r"[\u0B00-\u0B7F]"),
-        "Taml": re.compile(r"[\u0B80-\u0BFF]"),
-        "Telu": re.compile(r"[\u0C00-\u0C7F]"),
-        "Knda": re.compile(r"[\u0C80-\u0CFF]"),
-        "Mlym": re.compile(r"[\u0D00-\u0D7F]"),
-    }
 
 english_pattern=re.compile(r'[A-Za-z]+')
 punct_no_pattern = re.compile(r'[0-9!"#$%&\'()*+,-./:;<=>?@\[\\\]^_`{|}~\n\t।|॥۔؟]')
@@ -57,8 +43,6 @@ def ds_to_json(ds,column):
 def transliterate(org_batch,src_lang,use_sentence_transliterate=False):
     if use_sentence_transliterate:
         batch='[batch]'.join(org_batch)
-        batch=[ engine._transliterate_sentence(text=word,src_lang=src_lang,tgt_lang='en') 
-        for word in org_batch]
         try:
             batch=engine._transliterate_sentence(text=batch,src_lang=src_lang,tgt_lang='en').split('[batch]')
         except Exception as e:

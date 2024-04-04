@@ -1,7 +1,7 @@
 import re
 import regex
 from flashtext import KeywordProcessor
-from normalizer import normalize
+from normalizer import normalize,indic_script_patterns
 
 class MemoryWordReplacer:
     def __init__(self,dictionary_path:str,src_lang:str):
@@ -16,18 +16,7 @@ class MemoryWordReplacer:
         self.remove_punctuations_and_symbols= re.compile(r'^[\s,.!?-]+|[\s,.!?-]+$')
         self.src_lang=src_lang
         self.script_suffix=src_lang.split('_')[-1]
-        self.indic_script_patterns={
-        "Arab": re.compile(r"[\u0600-\u06FF]"),
-        "Beng": re.compile(r"[\u0980-\u09FF]"),
-        "Deva": re.compile(r"[\u0900-\u097F]"),
-        "Guru": re.compile(r"[\u0A00-\u0A7F]"),
-        "Gujr": re.compile(r"[\u0A80-\u0AFF]"),
-        "Orya": re.compile(r"[\u0B00-\u0B7F]"),
-        "Taml": re.compile(r"[\u0B80-\u0BFF]"),
-        "Telu": re.compile(r"[\u0C00-\u0C7F]"),
-        "Knda": re.compile(r"[\u0C80-\u0CFF]"),
-        "Mlym": re.compile(r"[\u0D00-\u0D7F]"),
-    }
+        self.indic_script_patterns=indic_script_patterns
 
     def remove_english_words(self,s):
         return self.english_pattern.sub('', s)
@@ -86,18 +75,21 @@ class MemoryWordReplacer:
                 missing_words (list): Words from original text not found in dictionary.
         """
         try:
-            org_text_list=org_text.replace('\n',' ').replace('\t',' ').split(' ')
-            transliterated_text_list=transliterated_text.replace('\n',' ').replace('\t',' ').split(' ')
+
+            org_text_list = re.split(r'\s+', org_text)
+            transliterated_text_list = re.split(r'\s+', transliterated_text)
             # Generate mappings
+            mixed_words = [
+                self.remove_punctuations_and_symbols.sub('',word) 
+                for word in list(self.mixed_words(transliterated_text))
+                ]
+            
             word_mapping={
                 self.remove_punctuations_and_symbols.sub('',key):self.remove_punctuations_and_symbols.sub('',value) 
                 for key, value in zip(transliterated_text_list,org_text_list)
                 }
 
-            mixed_words = [
-                self.remove_punctuations_and_symbols.sub('',word) 
-                for word in list(self.mixed_words(transliterated_text))
-                ]
+
             if mixed_words:
                 pattern = re.compile("|".join(map(re.escape, mixed_words)))
                 transliterated_text = pattern.sub(lambda m: word_mapping[m.group()], transliterated_text)            
@@ -110,6 +102,7 @@ class MemoryWordReplacer:
             return transliterated_text
             
         except Exception as e:
+
             print(f"Error occurred in fixing_mixed_words: {e}")
             return transliterated_text
 
