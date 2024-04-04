@@ -25,7 +25,7 @@ def remove_punctuation_and_numbers(batch_words):
     """
     Clean a list of words by removing punctuation and numbers.
     """
-    batch_words=[w for word in batch_words for w in punct_no_pattern.sub(' ',word).strip().split(' ') if w not in [' ','']]
+    batch_words=[w for word in batch_words for w in punct_no_pattern.sub(' ',word).strip().split(' ') if w]
     return batch_words
 
 
@@ -95,12 +95,14 @@ def transliterate(org_batch,src_lang,use_sentence_transliterate=False):
                     tgt_lang='en',
                     topk=1
             )
-            #transliterate by word if the count does not match the given length
+            #check the length of the batch
             assert len(org_batch)!=len(batch[0])
-            
+
         except Exception as e:
+            print(f'Failed on batch transliteration due to {e.message} continuing with word transliteration')
+            
+            # Word by word transliteration
             batch=[[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]]
-            print(f'Failed on sentence transliteration due to {e.message}')
 
         return {'transliterated':batch[0]}
 
@@ -131,10 +133,12 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
     
     ds=ds.map(lambda batch : {
         column:remove_punctuation_and_numbers(batch[column])
-        },remove_columns=ds.column_names,
+        },
+        remove_columns=ds.column_names,
+        num_proc=num_proc
         batched=True)
-    
-    ds=ds.filter(lambda x : indic_script_patterns[src_lang.split('_')[-1]].search(x[column]),num_proc=num_proc)
+    script=src_lang.split('_')[-1]
+    ds=ds.filter(lambda x : indic_script_patterns[script].search(x[column]),num_proc=num_proc)
     ds=ds.to_pandas().drop_duplicates(column)
     ds=Dataset.from_pandas(ds)
 
@@ -154,7 +158,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
             desc=f'sentence transliteration ({numerize(sent_ds.num_rows,3)} words)'
         )
     ds=concatenate_datasets([ds,sent_ds])
-    print(f'\nTotal words transliterated {ds.num_rows}')
+    print(f'\nTotal words transliterated {numerize(ds.num_rows,3)}')
 
     return ds
 
