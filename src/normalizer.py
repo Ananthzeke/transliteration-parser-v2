@@ -8,7 +8,7 @@ src_langs=["hin_Deva", "tam_Taml", "asm_Beng", "ben_Beng", "kan_Knda", "mar_Deva
 lang_codes=['hi','ta','as','bn','kn','mr','ml','ne','or','pa','sa','te','ur','gu']
 mapping_dict=dict(zip(src_langs,lang_codes))
 
-#regex complied  Indic script patterns
+#regex compiled  Indic script patterns
 indic_script_patterns={
         "Arab": re.compile(r"[\u0600-\u06FF]"),
         "Beng": re.compile(r"[\u0980-\u09FF]"),
@@ -59,4 +59,3 @@ if __name__=='__main__':
 
     text='முனிச்சிலிருந்து ரோம் oவரை நீங்கள் பயணிக்க பல வழிகள் இkங்கேஃ!'
     print(normalize('tam_Taml',text))
-    # print(trivial_tokenize(text,lang='ta'))

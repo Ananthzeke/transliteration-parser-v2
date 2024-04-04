@@ -63,21 +63,23 @@ if __name__ == '__main__':
     print(ds)
 
     ds=ds.filter(lambda x : x[text_column] not in (None,''),num_proc=num_proc)
+
     if sample_size:
         ds = ds['train'].select(range(sample_size))
     else:
         ds=ds['train']
-
+    
+    # Intialize dictionary for the flashtext
     mem_replacer=MemoryWordReplacer(dictionary_path,src_lang=src_lang)
 
     out_columns=['transliterated','missing_words']
+
     out_features=Features({
-        id_column:Value("string"),
-        'translated':Value("string"),
-        text_column:Value("string"),
+        column:Value("string") for column in columns } | {
         out_columns[0]: Value("string"),
         out_columns[1]: Sequence(Value("string"))
         })
+
     ds=ds.map(
         lambda z:dict(zip(out_columns,mem_replacer.replace_batches(z[text_column]))),
         batched=True,
