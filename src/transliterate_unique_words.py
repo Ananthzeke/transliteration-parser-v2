@@ -1,6 +1,7 @@
 import os,re
 import json
 import argparse
+from numerize.numerize import numerize
 from datasets import load_dataset,Dataset,concatenate_datasets
 from ai4bharat.transliteration import XlitEngine
 from normalizer import mapping_dict,indic_script_patterns
@@ -10,21 +11,36 @@ english_pattern=re.compile(r'[A-Za-z]+')
 punct_no_pattern = re.compile(r'[0-9!"#$%&\'()*+,-./:;<=>?@\[\\\]^_`{|}~\n\t।|॥۔؟]')
 punct_no_pattern_in_mid = re.compile(r'\w[ !-\/:-@\[-`{-~\d]\w')
 
+#Intialize indicxlit engine
+engine =  XlitEngine( beam_width=4, src_script_type = "indic")
+
+
 def contains_space_symbol_or_number_in_middle(word):
+    """
+    Check if a word has a space, symbol, or number in the middle.
+    """
     return bool(punct_no_pattern_in_mid.search(word))
 
 def remove_punctuation_and_numbers(batch_words):
+    """
+    Clean a list of words by removing punctuation and numbers.
+    """
     batch_words=[w for word in batch_words for w in punct_no_pattern.sub(' ',word).strip().split(' ') if w not in [' ','']]
     return batch_words
 
 
 def contains_punctuation(word):
+    """
+    Determine if a word contains punctuation.
+    """
     return bool(punct_no_pattern.search(word))
 
 def contains_english_words(s):
+    """
+    Check if a string contains English letters.
+    """
     return bool(english_pattern.search(s))
 
-engine =  XlitEngine( beam_width=4, src_script_type = "indic")
 
 def ds_to_json(ds,column):
     # Convert to Pandas DataFrame
@@ -41,31 +57,51 @@ def ds_to_json(ds,column):
 
 
 def transliterate(org_batch,src_lang,use_sentence_transliterate=False):
+    """
+    Transliterates a batch of text from the source language to English.
+
+    This function supports both word-level and sentence-level transliteration.
+
+    Parameters:
+    org_batch (list of str): The original text batch to be transliterated.
+    src_lang (str): The source language code (e.g., 'hi', 'ta').
+    use_sentence_transliterate (bool): Flag to use sentence-level transliteration if True; otherwise, word-level.
+
+    Returns:
+    dict: A dictionary with a key 'transliterated' containing the list of transliterated text.
+    
+    Note:sentence transliterate preserves symbols,punctuations, numbers and other languages
+
+    """
     if use_sentence_transliterate:
+         # Combine the batch into a single string for sentence-level transliteration
         batch='[batch]'.join(org_batch)
         try:
             batch=engine._transliterate_sentence(text=batch,src_lang=src_lang,tgt_lang='en').split('[batch]')
+            # Verify if transliteration count matches input count
+            if len(batch)!=len(org_batch):
+                batch=[engine._transliterate_sentence(text=word,src_lang=src_lang,tgt_lang='en') for word in org_batch]
+
         except Exception as e:
-            print(e)
-            batch=[engine._transliterate_sentence(text=word,src_lang=src_lang,tgt_lang='en') for word in org_batch]
+            print(f'Failed on sentence transliteration due to {e.message}')
+
         return {'transliterated':batch}
     
     else:
-        batch=engine.batch_transliterate_words(
-                org_batch,
-                src_lang=src_lang,
-                tgt_lang='en',
-                topk=1
-           )
-        if len(org_batch)!=len(batch[0]):
-            print(f'pre process {(org_batch)}')
-            print(f'post process {(batch[0])}')
+        try:
+            batch=engine.batch_transliterate_words(
+                    org_batch,
+                    src_lang=src_lang,
+                    tgt_lang='en',
+                    topk=1
+            )
+            #transliterate by word if the count does not match the given length
+            assert len(org_batch)!=len(batch[0])
+            
+        except Exception as e:
+            batch=[[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]]
+            print(f'Failed on sentence transliteration due to {e.message}')
 
-            try:
-                batch=[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]
-            except Exception as e: 
-                print(f'failed on example {org_batch}')
-            return {'transliterated':batch}
         return {'transliterated':batch[0]}
 
 def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache_dir,num_proc=8):
@@ -89,10 +125,15 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
     sent_ds=Dataset.from_pandas(sent_ds)
     ds=ds.filter(
         lambda x : not contains_space_symbol_or_number_in_middle(x[column]) 
-        and not contains_english_words(x[column]) ,num_proc=num_proc
+        and not contains_english_words(x[column]) 
+        and len(x[column])<=100,num_proc=num_proc
         )
     
-    ds=ds.map(lambda batch : {column:remove_punctuation_and_numbers(batch[column])},remove_columns=ds.column_names,batched=True)
+    ds=ds.map(lambda batch : {
+        column:remove_punctuation_and_numbers(batch[column])
+        },remove_columns=ds.column_names,
+        batched=True)
+    
     ds=ds.filter(lambda x : indic_script_patterns[src_lang.split('_')[-1]].search(x[column]),num_proc=num_proc)
     ds=ds.to_pandas().drop_duplicates(column)
     ds=Dataset.from_pandas(ds)
@@ -102,7 +143,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
             lambda x: transliterate(x[column],mapping_dict[src_lang],False),
             batched=True,
             batch_size=batch_size,
-            desc=f'batch transliteration ({round(ds.num_rows/1e3,3)}k words)'
+            desc=f'batch transliteration ({numerize(ds.num_rows,3)} words)'
     
         )
     if sent_ds.num_rows:
@@ -110,7 +151,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
             lambda x: transliterate(x[column],mapping_dict[src_lang],True),
             batched=True,
             batch_size=batch_size,
-            desc=f'sentence transliteration ({round(sent_ds.num_rows/1e3,3)}k words)'
+            desc=f'sentence transliteration ({numerize(sent_ds.num_rows,3)} words)'
         )
     ds=concatenate_datasets([ds,sent_ds])
     print(f'\nTotal words transliterated {ds.num_rows}')

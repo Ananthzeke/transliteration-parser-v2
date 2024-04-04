@@ -31,15 +31,15 @@ def get_words(ds,column):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Get uniue words from a dataset Hugging  store results in CSV.')
+    parser = argparse.ArgumentParser(description='Get unique words from a dataset and  store results in a CSV.')
     parser.add_argument('--input_path', type=str, required=True, help='Path to the input arrow file')
     parser.add_argument('--file_type', type=str,choices=['arrow','csv','parquet','json'] ,default='arrow', help='dataset file type')
     parser.add_argument('--src_lang', type=str, required=True, help='src_lang')
     parser.add_argument('--column_name', type=str, required=True, help='column_name')
     parser.add_argument('--batch_size', type=int, default=32, help='Batch size for processing')
-    parser.add_argument('--cache_dir', type=str, default='/data/umashankar/.cache', help='Cache directory for Hugging Face datasets')
+    parser.add_argument('--cache_dir', type=str, default='.cache', help='Cache directory for Hugging Face datasets')
     parser.add_argument('--output_csv_path', type=str, default='output.csv', help='Path to store the output csv file')
-    parser.add_argument('--num_proc', type=int, default=8, help='Batch size for processing')
+    parser.add_argument('--num_proc', type=int, default=1, help='count of CPUS')
     args = parser.parse_args()
 
     os.makedirs(args.output_csv_path,exist_ok=True)
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     words_ds=Dataset.from_dict({'words':words_ds.unique('words')})
 
     print(f'After processed there are  {numerize(words_ds.num_rows,3)} unique words in the language {src_lang}\n')
-    
+
     words_ds.to_csv(f'{output_path}/{src_lang}.csv')
     print(f'Saved the unique words in the path {output_path} for the language {src_lang}')
     
