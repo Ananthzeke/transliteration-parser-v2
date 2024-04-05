@@ -96,15 +96,16 @@ def transliterate(org_batch,src_lang,use_sentence_transliterate=False):
                     topk=1
             )
             #check the length of the batch
-            assert len(org_batch)!=len(batch[0])
+            assert len(org_batch)==len(batch[0])
 
         except Exception as e:
-            print(f'Failed on batch transliteration due to {e.message} continuing with word transliteration')
+            print(f'Failed on batch transliteration due to {e if e else 'input size not equal to output size'} continuing with word transliteration')
             
             # Word by word transliteration
             batch=[[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]]
 
-        return {'transliterated':batch[0]}
+        return {'transliterated':batch[0]}        
+
 
 def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache_dir,num_proc=8):
     
@@ -135,7 +136,7 @@ def transliterate_using_hugging_face(input_path,column,src_lang,batch_size,cache
         column:remove_punctuation_and_numbers(batch[column])
         },
         remove_columns=ds.column_names,
-        num_proc=num_proc
+        num_proc=num_proc,
         batched=True)
     script=src_lang.split('_')[-1]
     ds=ds.filter(lambda x : indic_script_patterns[script].search(x[column]),num_proc=num_proc)
