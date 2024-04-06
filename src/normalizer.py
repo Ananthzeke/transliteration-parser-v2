@@ -39,7 +39,7 @@ def normalize(src_lang:str ,text:str )-> str:
     Raises:
         ValueError: If `src_lang` is not supported.
     """
-    if not isinstance(str,text):
+    if not isinstance(text,str):
         raise ValueError(f'Normalizer only supports string as an input')
 
     if src_lang not in src_langs:
@@ -51,9 +51,9 @@ def normalize(src_lang:str ,text:str )-> str:
     elif src_lang=='urd_Arab':
         text=text.replace('۔', '.').replace('؟', '?')
         return text
-    else:
-        Normalizer=IndicNormalizerFactory().get_normalizer(language=mapping_dict[src_lang])
-        return Normalizer.normalize(text)
+    
+    Normalizer=IndicNormalizerFactory().get_normalizer(language=mapping_dict[src_lang])
+    return Normalizer.normalize(text)
     
 if __name__=='__main__':
 
