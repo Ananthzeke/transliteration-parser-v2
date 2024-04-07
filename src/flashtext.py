@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os
 import string
 import io
@@ -80,11 +81,11 @@ class KeywordProcessor(object):
             >>> # True
 
         """
-        if not self.case_sensitive:
-            word = word.lower()
         current_dict = self.keyword_trie_dict
         len_covered = 0
         for char in word:
+            if not self.case_sensitive:
+                char = char.lower()
             if char in current_dict:
                 current_dict = current_dict[char]
                 len_covered += 1
@@ -108,11 +109,11 @@ class KeywordProcessor(object):
             >>> keyword_processor['Big Apple']
             >>> # New York
         """
-        if not self.case_sensitive:
-            word = word.lower()
         current_dict = self.keyword_trie_dict
         len_covered = 0
         for char in word:
+            if not self.case_sensitive:
+                char = char.lower()
             if char in current_dict:
                 current_dict = current_dict[char]
                 len_covered += 1
@@ -141,10 +142,10 @@ class KeywordProcessor(object):
             clean_name = keyword
 
         if keyword and clean_name:
-            if not self.case_sensitive:
-                keyword = keyword.lower()
             current_dict = self.keyword_trie_dict
             for letter in keyword:
+                if not self.case_sensitive:
+                    letter = letter.lower()
                 current_dict = current_dict.setdefault(letter, {})
             if self._keyword not in current_dict:
                 status = True
@@ -166,11 +167,11 @@ class KeywordProcessor(object):
         """
         status = False
         if keyword:
-            if not self.case_sensitive:
-                keyword = keyword.lower()
             current_dict = self.keyword_trie_dict
             character_trie_list = []
             for letter in keyword:
+                if not self.case_sensitive:
+                    letter = letter.lower()
                 if letter in current_dict:
                     character_trie_list.append((letter, current_dict))
                     current_dict = current_dict[letter]
@@ -287,12 +288,12 @@ class KeywordProcessor(object):
             >>> # New York
         """
         return self.__getitem__(word)
-    
+
     @staticmethod
     def load_json_as_dict(file_path):
         try:
             with open(file_path, 'r') as file:
-                data = json.load(file)
+                data = json.load(file)                
                 data = {k.strip(): data[k].strip() for k in sorted(data, key=lambda k: len(k), reverse=True) if ' ' not in k.strip()}
 
                 return data
@@ -503,8 +504,6 @@ class KeywordProcessor(object):
         if not sentence:
             # if sentence is empty or none just return empty list
             return keywords_extracted
-        if not self.case_sensitive:
-            sentence = sentence.lower()
         current_dict = self.keyword_trie_dict
         sequence_start_pos = 0
         sequence_end_pos = 0
@@ -514,6 +513,8 @@ class KeywordProcessor(object):
         curr_cost = max_cost
         while idx < sentence_len:
             char = sentence[idx]
+            if not self.case_sensitive:
+                char = char.lower()
             # when we reach a character that might denote word end
             if char not in self.non_word_boundaries:
 
@@ -535,6 +536,8 @@ class KeywordProcessor(object):
                         idy = idx + 1
                         while idy < sentence_len:
                             inner_char = sentence[idy]
+                            if not self.case_sensitive:
+                                inner_char = inner_char.lower()
                             if inner_char not in self.non_word_boundaries and self._keyword in current_dict_continued:
                                 # update longest sequence found
                                 longest_sequence_found = current_dict_continued[self._keyword]
@@ -592,6 +595,8 @@ class KeywordProcessor(object):
                 idy = idx + 1
                 while idy < sentence_len:
                     char = sentence[idy]
+                    if not self.case_sensitive:
+                        char = char.lower()
                     if char not in self.non_word_boundaries:
                         break
                     idy += 1
@@ -634,8 +639,6 @@ class KeywordProcessor(object):
             return sentence
         new_sentence = []
         orig_sentence = sentence
-        if not self.case_sensitive:
-            sentence = sentence.lower()
         current_word = ''
         current_dict = self.keyword_trie_dict
         current_white_space = ''
@@ -645,6 +648,8 @@ class KeywordProcessor(object):
         curr_cost = max_cost
         while idx < sentence_len:
             char = sentence[idx]
+            if not self.case_sensitive:
+                char = char.lower()
             # when we reach whitespace
             if char not in self.non_word_boundaries:
                 current_word += orig_sentence[idx]
@@ -667,6 +672,8 @@ class KeywordProcessor(object):
                         idy = idx + 1
                         while idy < sentence_len:
                             inner_char = sentence[idy]
+                            if not self.case_sensitive:
+                                inner_char = inner_char.lower()
                             if inner_char not in self.non_word_boundaries and self._keyword in current_dict_continued:
                                 current_word_continued += orig_sentence[idy]
                                 # update longest sequence found
@@ -740,6 +747,8 @@ class KeywordProcessor(object):
                 idy = idx + 1
                 while idy < sentence_len:
                     char = sentence[idy]
+                    if not self.case_sensitive:
+                        char = char.lower()
                     current_word += orig_sentence[idy]
                     if char not in self.non_word_boundaries:
                         break
