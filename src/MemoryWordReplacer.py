@@ -1,5 +1,4 @@
 import re
-import regex
 from flashtext import KeywordProcessor
 from normalizer import normalize,indic_script_patterns
 
@@ -22,8 +21,6 @@ class MemoryWordReplacer:
 
         The method does not return anything but sets the following instance attributes:
         - english_pattern: Pattern to match English alphabetic characters.
-        - non_romanized_pattern: Pattern to match non-romanized (Indic) script characters.
-        - mixed_word_pattern: Pattern to identify words with a mix of English and Indic characters.
         - nos_and_punctuation_pattern: Pattern to match numbers and punctuation.
         - remove_punctuations_and_symbols: Pattern to remove punctuations and symbols from text.
 
@@ -31,8 +28,6 @@ class MemoryWordReplacer:
             None
         '''
         self.english_pattern=re.compile(r'[A-Za-z+]')
-        self.non_romanized_pattern = regex.compile(r'[\p{Z}\p{P}\p{S}\p{N}]+')
-        self.mixed_word_pattern = re.compile(r'[A-Za-z]')
         self.nos_and_punctuation_pattern=re.compile(r'[\d\.,;:!?\(\)\[\]\{\}\'\"<>@#$%^&*\-_+=/\\|~`]')
         self.remove_punctuations_and_symbols= re.compile(r'^[\s,.!?-]+|[\s,.!?-]+$')
 
@@ -66,7 +61,7 @@ class MemoryWordReplacer:
             raise ValueError(f"Script name '{self.script_suffix}' is not supported.")
 
             
-    def extract_script_words(self, sentence):
+    def extract_script_words(self, sentence:str)->list[str]:
         """
         Extract words from a sentence that belong to a Indic script.
 
@@ -127,7 +122,6 @@ class MemoryWordReplacer:
             org_text_list = re.split(r'\s+', org_text)
             transliterated_text_list = re.split(r'\s+', transliterated_text)
 
-            print(f'transliterated text:{transliterated_text}\n')
             # Generate mappings
             mixed_words = [
                 self.remove_punctuations_and_symbols.sub('',word) 
