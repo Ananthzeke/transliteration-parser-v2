@@ -1,6 +1,7 @@
 import os
 import glob
 import argparse
+from numerize.numerize import numerize
 from MemoryWordReplacer import MemoryWordReplacer
 from datasets import load_dataset,disable_caching,Features,Sequence,Value
 
@@ -60,8 +61,7 @@ if __name__ == '__main__':
         data_files=dataset_paths,
         cache_dir=cache_dir,
     ).select_columns(columns)
-    print(ds)
-
+    
     ds=ds.filter(lambda x : x[text_column] not in (None,''),num_proc=num_proc)
 
     if sample_size:
@@ -69,6 +69,8 @@ if __name__ == '__main__':
     else:
         ds=ds['train']
     
+    print(f'{numerize(ds.num_rows)} rows in the dataset with columns {ds.column_names}')
+
     # Intialize dictionary for the flashtext
     mem_replacer=MemoryWordReplacer(dictionary_path,src_lang=src_lang)
 
@@ -89,7 +91,6 @@ if __name__ == '__main__':
     )
     df=ds.to_pandas()['missing_words'].explode().drop_duplicates()
     df.to_csv(f'{missing_words_log_path}/{src_lang}.csv',index=False)
-
     if ds.num_rows//2>num_proc and num_proc>=40:
         ds.save_to_disk(output_path,num_proc=40)
     else:
