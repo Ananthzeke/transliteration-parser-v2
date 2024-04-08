@@ -3,6 +3,8 @@ import os
 import string
 import io
 import json
+import re 
+eng_pattern = re.compile(r'[A-Za-z+]')
 
 class KeywordProcessor(object):
     """KeywordProcessor
@@ -294,7 +296,8 @@ class KeywordProcessor(object):
         try:
             with open(file_path, 'r') as file:
                 data = json.load(file)                
-                data = {k.strip(): data[k].strip() for k in sorted(data, key=lambda k: len(k), reverse=True) if ' ' not in k.strip()}
+                data = {k.strip(): data[k].strip() for k in sorted(data, key=lambda k: len(k), reverse=True) if eng_pattern.sub('',k).strip() }
+
 
                 return data
         except FileNotFoundError:

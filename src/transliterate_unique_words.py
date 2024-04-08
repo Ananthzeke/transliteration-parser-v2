@@ -99,7 +99,7 @@ def transliterate(org_batch,src_lang,use_sentence_transliterate=False):
             assert len(org_batch)==len(batch[0])
 
         except Exception as e:
-            print(f'Failed on batch transliteration due to {e if e else 'input size not equal to output size'} continuing with word transliteration')
+            print(f'Failed on batch transliteration due to {e if e else "input size not equal to output size"}, continuing with word transliteration')
             
             # Word by word transliteration
             batch=[[engine.translit_word(word,src_lang,topk=1)[0] for word in org_batch]]

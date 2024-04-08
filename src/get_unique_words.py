@@ -65,9 +65,9 @@ if __name__ == '__main__':
         lambda x: {'words':get_words(x,column)},
         batch_size=batch_size,  
         num_proc=num_proc,
-        remove_columns=ds.column_names,
+        remove_columns=ds['train'].column_names,
         batched=True,
-        desc=f'{numerize(ds.num_rows,3)} words'
+        desc=f'{numerize(ds['train'].num_rows,3)} words'
     )
 
     #Getting unique words from the dataset
