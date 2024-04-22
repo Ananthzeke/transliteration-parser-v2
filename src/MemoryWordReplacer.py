@@ -196,7 +196,7 @@ class MemoryWordReplacer:
 
         # Placeholder handling
         if use_placeholder:
-            placeholder = '[batch]'
+            placeholder = ' [batch] '
             text = placeholder.join(batch)
             transliterated_text = self.multiple_replace(text)
             transliterated_batch = transliterated_text.split(placeholder)
