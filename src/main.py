@@ -60,6 +60,7 @@ if __name__ == '__main__':
         file_type,
         data_files=dataset_paths,
         cache_dir=cache_dir,
+        num_proc=num_proc,
     ).select_columns(columns)
     
     ds=ds.filter(lambda x : x[text_column] not in (None,''),num_proc=num_proc)

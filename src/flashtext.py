@@ -4,7 +4,10 @@ import string
 import io
 import json
 import re 
-eng_pattern = re.compile(r'[A-Za-z+]')
+from tqdm import tqdm
+
+eng_pattern = re.compile(r'[A-Za-z0-9+]')
+
 
 class KeywordProcessor(object):
     """KeywordProcessor
@@ -298,7 +301,6 @@ class KeywordProcessor(object):
                 data = json.load(file)                
                 data = {k.strip(): data[k].strip() for k in sorted(data, key=lambda k: len(k), reverse=True) if eng_pattern.sub('',k).strip() }
 
-
                 return data
         except FileNotFoundError:
             print("The file was not found.")
@@ -344,7 +346,7 @@ class KeywordProcessor(object):
             dictionary=KeywordProcessor.load_json_as_dict(keyword_file)
             cleaned_dictionary={key: value for key, value in dictionary.items() 
                                 if value is not None and not isinstance(value, list)}
-            for key,value in cleaned_dictionary.items():
+            for key,value in tqdm(cleaned_dictionary.items(),desc='Building Trie'):
                 self.add_keyword(key,value)
             return cleaned_dictionary
 
