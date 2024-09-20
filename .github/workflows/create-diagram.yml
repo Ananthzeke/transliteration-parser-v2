@@ -10,8 +10,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@master
-        with:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       - name: Update diagram
         uses: githubocto/repo-visualizer@main
         with:
